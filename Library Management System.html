@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Library Management System</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--tx:#161b2e;--mu:#5d6580;--bd:#dfe3ee;--pr:#2563eb;--on:#fff;--ok:#0f766e;--wa:#b45309;--er:#dc2626;--hd:#eef1f8;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1220;--card:#181c30;--tx:#e8ebf7;--mu:#9aa3c2;--bd:#2a3050;--pr:#6b95ff;--on:#0b1020;--ok:#2dd4bf;--wa:#fbbf24;--er:#f87171;--hd:#20263f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1220;--card:#181c30;--tx:#e8ebf7;--mu:#9aa3c2;--bd:#2a3050;--pr:#6b95ff;--on:#0b1020;--ok:#2dd4bf;--wa:#fbbf24;--er:#f87171;--hd:#20263f;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:18px 20px 6px;max-width:1100px;margin:auto}
+h1{margin:0;font-size:22px}header p{margin:2px 0 0;color:var(--mu);font-size:13px}
+nav{display:flex;gap:6px;flex-wrap:wrap;padding:10px 20px;max-width:1100px;margin:auto}
+nav button{border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:7px 13px;border-radius:999px;cursor:pointer;font:inherit}
+nav button.on{background:var(--pr);color:var(--on);border-color:var(--pr)}
+main{max-width:1100px;margin:auto;padding:4px 20px 40px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px}
+.stat b{display:block;font-size:24px}.stat span{color:var(--mu);font-size:12px}
+.w{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--bd);white-space:nowrap}th{background:var(--hd);font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mu)}
+input,select,button.b{font:inherit;padding:7px 9px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--tx);max-width:100%}
+button.b{cursor:pointer;background:var(--pr);color:var(--on);border-color:var(--pr)}button.b.g{background:var(--card);color:var(--tx);border-color:var(--bd)}
+button.b.s{padding:3px 9px;font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.tag{padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid currentColor}
+.ok{color:var(--ok)}.wa{color:var(--wa)}.er{color:var(--er)}.mu{color:var(--mu)}
+details summary{cursor:pointer;font-weight:600}h2{font-size:16px;margin:0 0 8px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--tx);color:var(--bg);padding:9px 16px;border-radius:10px;opacity:0;transition:.25s;pointer-events:none;max-width:90vw;z-index:5}
+#toast.on{opacity:1}
+</style></head><body>
+<header><h1>📚 Library Management System</h1><p>Catalogue, circulation, reservations and fines, built on the 10-table MySQL schema (demo data kept in this browser)</p></header>
+<nav id="nav"></nav><main id="app"></main><div id="toast"></div>
+<script>
+const K="lms_g2_v2",RATE=5,DAYS=14;
+const seed=()=>({
+authors:[[1,"George Orwell","British","1903-06-25"],[2,"J. K. Rowling","British","1965-07-31"],[3,"R. K. Narayan","Indian","1906-10-10"],[4,"A. P. J. Abdul Kalam","Indian","1931-10-15"],[5,"Robert C. Martin","American","1952-12-05"],[6,"Silberschatz, Korth and Sudarshan","American",""]].map(a=>({author_id:a[0],author_name:a[1],nationality:a[2],birth_date:a[3]})),
+publishers:[[1,"Penguin Books","London"],[2,"Bloomsbury","London"],[3,"Indian Thought Publications","Chennai"],[4,"Universities Press","Hyderabad"],[5,"Pearson","London"],[6,"McGraw Hill","New York"]].map(a=>({publisher_id:a[0],publisher_name:a[1],city:a[2]})),
+categories:["Fiction","Fantasy","Indian Literature","Biography","Programming","Database Systems"].map((n,i)=>({category_id:i+1,category_name:n})),
+books:[[1,"9780451524935","1984",1,1,1949,"Reprint"],[2,"9780747532699","Harry Potter and the Philosopher’s Stone",2,2,1997,"First"],[3,"9788185986173","Malgudi Days",3,3,1943,"Reprint"],[4,"9788173711466","Wings of Fire",4,4,1999,"Reprint"],[5,"9780132350884","Clean Code",5,5,2008,"First"],[6,"9780073523323","Database System Concepts",6,6,2019,"7th"]].map(a=>({book_id:a[0],isbn:a[1],title:a[2],publisher_id:a[3],category_id:a[4],publication_year:a[5],edition:a[6],language_name:"English"})),
+book_authors:[[1,1],[2,2],[3,3],[4,4],[5,5],[6,6]].map(a=>({book_id:a[0],author_id:a[1]})),
+members:[[1,"Aarav Sen","aarav.sen@example.com","9000000001","Kolkata, West Bengal","2026-01-10","ACTIVE"],[2,"Mira Das","mira.das@example.com","9000000002","Barasat, West Bengal","2026-02-05","ACTIVE"],[3,"Rahul Roy","rahul.roy@example.com","9000000003","Habra, West Bengal","2026-03-12","ACTIVE"],[4,"Priya Ghosh","priya.ghosh@example.com","9000000004","Kolkata, West Bengal","2026-04-18","SUSPENDED"],[5,"Sneha Banerjee","sneha.banerjee@example.com","9000000005","Salt Lake, Kolkata","2026-05-02","ACTIVE"],[6,"Arjun Mukherjee","arjun.mukherjee@example.com","9000000006","Dum Dum, Kolkata","2026-05-14","ACTIVE"],[7,"Ananya Chatterjee","ananya.chatterjee@example.com","9000000007","Barrackpore, West Bengal","2026-06-01","ACTIVE"],[8,"Sourav Pal","sourav.pal@example.com","9000000008","Howrah, West Bengal","2026-06-20","ACTIVE"],[9,"Ishita Bose","ishita.bose@example.com","9000000009","Behala, Kolkata","2026-07-08","ACTIVE"],[10,"Debojit Saha","debojit.saha@example.com","9000000010","Madhyamgram, West Bengal","2026-08-15","ACTIVE"],[11,"Riya Dutta","riya.dutta@example.com","9000000011","Kolkata, West Bengal","2026-09-03","ACTIVE"],[12,"Tanmay Halder","tanmay.halder@example.com","9000000012","Barasat, West Bengal","2026-02-27","CLOSED"]].map(a=>({member_id:a[0],full_name:a[1],email:a[2],phone:a[3],address:a[4],joined_on:a[5],member_status:a[6]})),
+copies:[[1,1,"ACC-1984-001","A1-01","AVAILABLE"],[2,1,"ACC-1984-002","A1-01","ISSUED"],[3,2,"ACC-HP-001","B2-03","AVAILABLE"],[4,3,"ACC-MD-001","C1-02","AVAILABLE"],[5,4,"ACC-WOF-001","D1-04","AVAILABLE"],[6,5,"ACC-CC-001","E3-01","ISSUED"],[7,6,"ACC-DB-001","E3-02","AVAILABLE"]].map(a=>({copy_id:a[0],book_id:a[1],accession_no:a[2],shelf_location:a[3],copy_status:a[4]})),
+loans:[{loan_id:1,copy_id:2,member_id:1,issue_date:"2026-10-01",due_date:"2026-10-15",return_date:"",issued_by:"Librarian A"},{loan_id:2,copy_id:6,member_id:2,issue_date:"2026-09-01",due_date:"2026-09-15",return_date:"2026-09-20",issued_by:"Librarian A"}],
+reservations:[{reservation_id:1,book_id:1,member_id:3,reservation_date:"2026-10-20",reservation_status:"WAITING"}],
+fines:[{fine_id:1,loan_id:2,amount:25,reason:"Late return: 5 days at Rs. 5 per day",assessed_on:"2026-09-20",payment_status:"UNPAID",paid_on:""}]});
+let D;try{D=JSON.parse(localStorage.getItem(K))}catch(e){}
+if(!D||!D.books)D=seed();
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(D))}catch(e){}};
+const e=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pad=n=>String(n).padStart(2,"0"),ds=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const today=()=>ds(new Date()),addD=(s,n)=>{const d=new Date(s+"T00:00:00");d.setDate(d.getDate()+n);return ds(d)};
+const diff=(a,b)=>Math.round((new Date(b+"T00:00:00")-new Date(a+"T00:00:00"))/864e5);
+const nid=(arr,k)=>arr.reduce((m,x)=>Math.max(m,x[k]),0)+1;
+const g=(arr,k,v)=>arr.find(x=>x[k]==v);
+const v=id=>document.getElementById(id).value.trim();
+const book=id=>g(D.books,"book_id",id)||{},mem=id=>g(D.members,"member_id",id)||{};
+const copyOf=id=>g(D.copies,"copy_id",id)||{};
+const authorsOf=id=>D.book_authors.filter(x=>x.book_id==id).map(x=>g(D.authors,"author_id",x.author_id).author_name).join(", ");
+const lst=l=>l.return_date?"RETURNED":(l.due_date<today()?"OVERDUE":"ISSUED");
+const cls={AVAILABLE:"ok",ISSUED:"wa",RETURNED:"ok",OVERDUE:"er",LOST:"er",DAMAGED:"er",WITHDRAWN:"mu",ACTIVE:"ok",SUSPENDED:"wa",CLOSED:"mu",WAITING:"wa",FULFILLED:"ok",CANCELLED:"mu",UNPAID:"er",PAID:"ok",WAIVED:"mu"};
+const tg=s=>`<span class="tag ${cls[s]||""}">${s}</span>`;
+const opt=(arr,k,f,sel)=>arr.map(x=>`<option value="${x[k]}"${x[k]==sel?" selected":""}>${e(f(x))}</option>`).join("");
+const tbl=(h,r)=>`<div class="w"><table><tr>${h.map(x=>`<th>${x}</th>`).join("")}</tr>${r.length?r.map(x=>`<tr>${x.map(c=>`<td>${c}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="${h.length}" class="mu">Nothing here yet.</td></tr>`}</table></div>`;
+function toast(m){const t=document.getElementById("toast");t.textContent=m;t.className="on";clearTimeout(toast.t);toast.t=setTimeout(()=>t.className="",2600)}
+let tab="Dashboard",q="",lf="active";
+const tabs=["Dashboard","Catalogue","Copies","Members","Circulation","Reservations","Fines"];
+const A={
+ tab(t){tab=t;draw()},
+ addBook(){const t=v("bt");if(!t)return toast("Title is required");const isbn=v("bi");
+  if(isbn&&D.books.some(b=>b.isbn===isbn))return toast("That ISBN already exists");
+  let id=nid(D.books,"book_id");D.books.push({book_id:id,isbn,title:t,publisher_id:+v("bp")||null,category_id:+v("bc")||null,publication_year:+v("by")||"",edition:"",language_name:"English"});
+  const an=v("ba");if(an){let a=D.authors.find(x=>x.author_name.toLowerCase()==an.toLowerCase());if(!a){a={author_id:nid(D.authors,"author_id"),author_name:an,nationality:"",birth_date:""};D.authors.push(a)}D.book_authors.push({book_id:id,author_id:a.author_id})}
+  save();toast("Book added");draw()},
+ addCopy(){const a=v("ca");if(!a)return toast("Accession number is required");if(D.copies.some(c=>c.accession_no==a))return toast("Accession number must be unique");
+  D.copies.push({copy_id:nid(D.copies,"copy_id"),book_id:+v("cb"),accession_no:a,shelf_location:v("cs"),copy_status:"AVAILABLE"});save();toast("Copy added");draw()},
+ copySt(id,s){const c=copyOf(id);if(c.copy_status=="ISSUED")return;c.copy_status=s;save();draw()},
+ addMem(){const n=v("mn"),m=v("me");if(!n||!m)return toast("Name and email are required");if(D.members.some(x=>x.email.toLowerCase()==m.toLowerCase()))return toast("Email already registered");
+  D.members.push({member_id:nid(D.members,"member_id"),full_name:n,email:m,phone:v("mp"),address:v("ma"),joined_on:today(),member_status:"ACTIVE"});save();toast("Member added");draw()},
+ memSt(id,s){mem(id).member_status=s;save();draw()},
+ issue(){const m=mem(+v("im")),c=copyOf(+v("ic"));if(!m.member_id||!c.copy_id)return toast("Pick a member and an available copy");
+  if(m.member_status!="ACTIVE")return toast("Member must be ACTIVE");if(c.copy_status!="AVAILABLE")return toast("Copy is not available");
+  if(D.loans.some(l=>l.copy_id==c.copy_id&&!l.return_date))return toast("Copy already has an active loan");
+  D.loans.push({loan_id:nid(D.loans,"loan_id"),copy_id:c.copy_id,member_id:m.member_id,issue_date:today(),due_date:addD(today(),DAYS),return_date:"",issued_by:"Librarian"});
+  c.copy_status="ISSUED";D.reservations.forEach(r=>{if(r.member_id==m.member_id&&r.book_id==c.book_id&&r.reservation_status=="WAITING")r.reservation_status="FULFILLED"});
+  save();toast("Issued, due "+addD(today(),DAYS));draw()},
+ ret(id){const l=g(D.loans,"loan_id",id);if(l.return_date)return;l.return_date=today();const c=copyOf(l.copy_id);if(c.copy_status=="ISSUED")c.copy_status="AVAILABLE";
+  const late=diff(l.due_date,today());let msg="Returned";
+  if(late>0&&!D.fines.some(f=>f.loan_id==id)){D.fines.push({fine_id:nid(D.fines,"fine_id"),loan_id:id,amount:late*RATE,reason:`Late return: ${late} days at Rs. ${RATE} per day`,assessed_on:today(),payment_status:"UNPAID",paid_on:""});msg+=`, fine Rs. ${late*RATE}`}
+  save();toast(msg);draw()},
+ reserve(){const b=+v("rb"),m=+v("rm");if(!b||!m)return toast("Pick a member and a title");if(mem(m).member_status!="ACTIVE")return toast("Member must be ACTIVE");
+  if(D.reservations.some(r=>r.book_id==b&&r.member_id==m&&r.reservation_status=="WAITING"))return toast("Already in the queue");
+  D.reservations.push({reservation_id:nid(D.reservations,"reservation_id"),book_id:b,member_id:m,reservation_date:today(),reservation_status:"WAITING"});save();toast("Reservation queued");draw()},
+ cancel(id){g(D.reservations,"reservation_id",id).reservation_status="CANCELLED";save();draw()},
+ fine(id,s){const f=g(D.fines,"fine_id",id);f.payment_status=s;f.paid_on=s=="PAID"?today():"";save();draw()},
+ reset(){if(confirm("Reset all data to the sample data?")){D=seed();save();draw()}}
+};
+function dash(){
+ const av=D.copies.filter(c=>c.copy_status=="AVAILABLE").length,ac=D.loans.filter(l=>!l.return_date),od=ac.filter(l=>lst(l)=="OVERDUE");
+ const uf=D.fines.filter(f=>f.payment_status=="UNPAID").reduce((s,f)=>s+f.amount,0);
+ const st=[[D.books.length,"Titles"],[D.copies.length,"Physical copies"],[av,"Available now"],[ac.length,"Active loans"],[od.length,"Overdue"],["Rs. "+uf,"Unpaid fines"],[D.members.filter(m=>m.member_status=="ACTIVE").length,"Active members"],[D.reservations.filter(r=>r.reservation_status=="WAITING").length,"Waiting reservations"]];
+ return `<div class="grid">${st.map(s=>`<div class="stat"><b>${s[0]}</b><span>${s[1]}</span></div>`).join("")}</div>
+ <div class="card"><h2>Overdue loans</h2>${tbl(["Member","Title","Due","Days late","Fine so far",""],od.map(l=>{const d=diff(l.due_date,today());return[e(mem(l.member_id).full_name),e(book(copyOf(l.copy_id).book_id).title),l.due_date,d,"Rs. "+d*RATE,`<button class="b s" onclick="A.ret(${l.loan_id})">Return</button>`]}))}</div>
+ <div class="card"><h2>Copies by status</h2>${["AVAILABLE","ISSUED","LOST","DAMAGED","WITHDRAWN"].map(s=>`${tg(s)} ${D.copies.filter(c=>c.copy_status==s).length}`).join(" &nbsp; ")}</div>
+ <button class="b g s" onclick="A.reset()">Reset sample data</button>`}
+function catT(){const t=q.toLowerCase();return tbl(["Title","Author(s)","Category","Publisher","Year","ISBN","Copies"],D.books.filter(b=>!t||(b.title+authorsOf(b.book_id)+b.isbn).toLowerCase().includes(t)).sort((a,b)=>a.title.localeCompare(b.title)).map(b=>{const cs=D.copies.filter(c=>c.book_id==b.book_id);return[e(b.title),e(authorsOf(b.book_id)),e((g(D.categories,"category_id",b.category_id)||{}).category_name),e((g(D.publishers,"publisher_id",b.publisher_id)||{}).publisher_name),b.publication_year,e(b.isbn),cs.filter(c=>c.copy_status=="AVAILABLE").length+" / "+cs.length]}))}
+function cat(){return `<div class="card"><div class="row"><input id="qs" placeholder="Search title, author or ISBN" value="${e(q)}" oninput="q=this.value;document.getElementById('ct').innerHTML=catT()" style="flex:1;min-width:200px"></div><div id="ct">${catT()}</div></div>
+ <div class="card"><details><summary>Add a book</summary><div class="row"><input id="bt" placeholder="Title"><input id="ba" placeholder="Author"><input id="bi" placeholder="ISBN"><input id="by" type="number" placeholder="Year" style="width:90px"></div>
+ <div class="row"><select id="bp">${opt(D.publishers,"publisher_id",p=>p.publisher_name)}</select><select id="bc">${opt(D.categories,"category_id",c=>c.category_name)}</select><button class="b" onclick="A.addBook()">Save book</button></div></details></div>`}
+function copies(){return `<div class="card">${tbl(["Accession","Title","Shelf","Status","Change status"],D.copies.map(c=>[e(c.accession_no),e(book(c.book_id).title),e(c.shelf_location),tg(c.copy_status),c.copy_status=="ISSUED"?`<span class="mu">on loan</span>`:`<select onchange="A.copySt(${c.copy_id},this.value)">${["AVAILABLE","LOST","DAMAGED","WITHDRAWN"].map(s=>`<option${s==c.copy_status?" selected":""}>${s}</option>`).join("")}</select>`]))}</div>
+ <div class="card"><details><summary>Add a physical copy</summary><div class="row"><select id="cb">${opt(D.books,"book_id",b=>b.title)}</select><input id="ca" placeholder="Accession no. (unique)"><input id="cs" placeholder="Shelf, e.g. A1-02"><button class="b" onclick="A.addCopy()">Add copy</button></div></details></div>`}
+function members(){return `<div class="card">${tbl(["Name","Email","Phone","Address","Joined","Status","Change"],D.members.map(m=>[e(m.full_name),e(m.email),e(m.phone),e(m.address),m.joined_on,tg(m.member_status),`<select onchange="A.memSt(${m.member_id},this.value)">${["ACTIVE","SUSPENDED","CLOSED"].map(s=>`<option${s==m.member_status?" selected":""}>${s}</option>`).join("")}</select>`]))}</div>
+ <div class="card"><details><summary>Add a member</summary><div class="row"><input id="mn" placeholder="Full name"><input id="me" placeholder="Email (unique)"><input id="mp" placeholder="Phone"><input id="ma" placeholder="Address"><button class="b" onclick="A.addMem()">Add member</button></div></details></div>`}
+function circ(){const ls=D.loans.filter(l=>lf=="all"||!l.return_date).sort((a,b)=>b.loan_id-a.loan_id);
+ return `<div class="card"><h2>Issue a book</h2><div class="row"><select id="im"><option value="">Member (ACTIVE only)</option>${opt(D.members.filter(m=>m.member_status=="ACTIVE"),"member_id",m=>m.full_name)}</select><select id="ic"><option value="">Available copy</option>${opt(D.copies.filter(c=>c.copy_status=="AVAILABLE"),"copy_id",c=>book(c.book_id).title+" ("+c.accession_no+")")}</select><button class="b" onclick="A.issue()">Issue (${DAYS} days)</button></div></div>
+ <div class="card"><div class="row"><h2 style="margin:0">Loans</h2><select onchange="lf=this.value;draw()"><option value="active"${lf=="active"?" selected":""}>Active only</option><option value="all"${lf=="all"?" selected":""}>All history</option></select></div>${tbl(["#","Member","Title","Accession","Issued","Due","Returned","Status",""],ls.map(l=>[l.loan_id,e(mem(l.member_id).full_name),e(book(copyOf(l.copy_id).book_id).title),e(copyOf(l.copy_id).accession_no),l.issue_date,l.due_date,l.return_date||"-",tg(lst(l)),l.return_date?"":`<button class="b s" onclick="A.ret(${l.loan_id})">Return</button>`]))}</div>`}
+function res(){const w=D.reservations.filter(r=>r.reservation_status=="WAITING");
+ return `<div class="card"><h2>New reservation</h2><div class="row"><select id="rm"><option value="">Member</option>${opt(D.members.filter(m=>m.member_status=="ACTIVE"),"member_id",m=>m.full_name)}</select><select id="rb"><option value="">Title</option>${opt(D.books,"book_id",b=>b.title)}</select><button class="b" onclick="A.reserve()">Join queue</button></div></div>
+ <div class="card">${tbl(["#","Title","Member","Date","Queue position","Status",""],[...D.reservations].reverse().map(r=>{const pos=r.reservation_status=="WAITING"?w.filter(x=>x.book_id==r.book_id).findIndex(x=>x.reservation_id==r.reservation_id)+1:"-";return[r.reservation_id,e(book(r.book_id).title),e(mem(r.member_id).full_name),r.reservation_date,pos,tg(r.reservation_status),r.reservation_status=="WAITING"?`<button class="b g s" onclick="A.cancel(${r.reservation_id})">Cancel</button>`:""]}))}</div>`}
+function fines(){const u=D.fines.filter(f=>f.payment_status=="UNPAID").reduce((s,f)=>s+f.amount,0);
+ return `<div class="card"><p style="margin:0 0 8px">Outstanding: <b class="er">Rs. ${u}</b> <span class="mu">(Rs. ${RATE} per overdue day, one fine per loan)</span></p>${tbl(["#","Member","Title","Amount","Reason","Assessed","Status",""],D.fines.map(f=>{const l=g(D.loans,"loan_id",f.loan_id);return[f.fine_id,e(mem(l.member_id).full_name),e(book(copyOf(l.copy_id).book_id).title),"Rs. "+f.amount,e(f.reason),f.assessed_on,tg(f.payment_status),f.payment_status=="UNPAID"?`<button class="b s" onclick="A.fine(${f.fine_id},'PAID')">Mark paid</button> <button class="b g s" onclick="A.fine(${f.fine_id},'WAIVED')">Waive</button>`:""]}))}</div>`}
+const V={Dashboard:dash,Catalogue:cat,Copies:copies,Members:members,Circulation:circ,Reservations:res,Fines:fines};
+function draw(){document.getElementById("nav").innerHTML=tabs.map(t=>`<button class="${t==tab?"on":""}" onclick="A.tab('${t}')">${t}</button>`).join("");document.getElementById("app").innerHTML=V[tab]()}
+draw();
+</script></body></html>
